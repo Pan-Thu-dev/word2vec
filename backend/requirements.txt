@@ -1,0 +1,7 @@
+fastapi>=0.95.0
+uvicorn[standard]>=0.20.0 # ASGI server to run FastAPI
+transformers>=4.0.0
+torch>=1.8.0 # Or install specific version (CPU/GPU) if needed
+scikit-learn>=1.0.0
+numpy>=1.20.0
+python-dotenv>=0.20.0 # Optional: For environment variables 
