@@ -1,0 +1,21 @@
+# Frontend (Next.js)
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/*.log
+frontend/.env.local
+frontend/.env
+
+# Backend (Python/FastAPI)
+env/
+backend/__pycache__/
+backend/*.pyc
+backend/*.pyo
+backend/*.pyd
+backend/.Python
+backend/*.log
+backend/.env
+
+# General
+*.log
+.DS_Store  # macOS

@@ -1,4 +1,4 @@
-'use client'; // Needed for components using hooks like useState, useEffect
+'use client';
 
 import React, { Suspense, useRef, useEffect, useState } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
@@ -153,25 +153,12 @@ function SceneContent({ words, positions, links }) {
       }
     };
 
-    // Function to generate distinct colors for relationships based on word pairs
-    const getRelationshipColor = (startIndex, endIndex) => {
-      // Create some distinct colors for relationships
-      const colors = [
-        "#4cc9f0", // blue
-        "#f72585", // pink
-        "#7209b7", // purple
-        "#4361ee", // indigo
-        "#3a0ca3", // deep purple
-        "#4895ef", // light blue
-        "#560bad", // violet
-        "#f3722c", // orange
-        "#90be6d", // green
-        "#43aa8b", // teal
-      ];
-      
-      // Use a simple hash to get a consistent color for each word pair
-      const colorIndex = (startIndex * 13 + endIndex * 17) % colors.length;
-      return colors[colorIndex];
+    // Function to get color based on similarity
+    const getSimilarityColor = (similarity) => {
+      if (similarity > 0.8) return '#00ff00'; // Green for 0.8–1.0
+      if (similarity > 0.5) return '#ffa500'; // Orange for 0.5–0.75
+      if (similarity >= 0.1) return '#ff0000'; // Red for 0.1–0.45
+      return '#ff0000'; // Fallback for <0.1 (shouldn't occur with threshold)
     };
 
     return (
@@ -193,17 +180,17 @@ function SceneContent({ words, positions, links }) {
 
             {/* Group for all relationship lines */}
             <group ref={groupRef}>
-                {/* Render Links with distinct colors */}
-                {links.map(([startIndex, endIndex], linkIndex) => {
+                {/* Render Links with similarity-based colors */}
+                {links.map((link, linkIndex) => {
+                    const { source, target, similarity } = link;
                     // Ensure positions exist before trying to render line
-                    if (positions[startIndex] && positions[endIndex]) {
-                        const lineColor = getRelationshipColor(startIndex, endIndex);
+                    if (positions[source] && positions[target]) {
                         return (
                             <Line
                                 key={`link-${linkIndex}`}
-                                points={[positions[startIndex], positions[endIndex]]}
-                                color={lineColor}
-                                lineWidth={2.5} // Make lines thicker than the globe wireframe
+                                points={[positions[source], positions[target]]}
+                                color={getSimilarityColor(similarity)}
+                                lineWidth={2.5} // Keep original thickness
                                 opacity={0.8}
                                 transparent
                                 renderOrder={1} // Render above globe wireframe
@@ -264,4 +251,4 @@ export default function GlobeVisualization({ wordData }) {
             </Canvas>
         </div>
     );
-} 
+}
