@@ -11,12 +11,11 @@ function RotatingGlobe() {
   
   useFrame(({ clock }) => {
     if (groupRef.current) {
-      // Slow automatic rotation
       groupRef.current.rotation.y = clock.getElapsedTime() * 0.05;
     }
   });
   
-  return null; // This is just for the rotation logic
+  return null; 
 }
 
 // Camera controller for smooth transitions
@@ -29,28 +28,22 @@ function CameraController({ target, resetZoom }) {
   
   useEffect(() => {
     if (resetZoom && controls) {
-      // Reset to initial position
       controls.target.copy(initialTarget.current);
       camera.position.copy(initialPosition.current);
       controls.update();
     } else if (target && target.length === 3 && controls) {
-      // Create Vector3 from target position
       const targetVector = new THREE.Vector3(target[0], target[1], target[2]);
       
-      // Set new target for OrbitControls
       controls.target.copy(targetVector);
       
-      // Position camera closer to the target
       const zoomDistance = 3;
       const direction = targetVector.clone().normalize();
       const cameraPosition = targetVector.clone().add(
         direction.multiplyScalar(zoomDistance)
       );
       
-      // Set camera position
       camera.position.copy(cameraPosition);
       
-      // Update controls
       controls.update();
     }
   }, [target, resetZoom, camera, controls]);
@@ -60,13 +53,10 @@ function CameraController({ target, resetZoom }) {
 
 // 3D Node component with glow effect
 function WordNode({ position, word, onClick }) {
-  // Reference for animation
   const sphereRef = useRef();
   
-  // Subtle floating animation for the node
   useFrame(({ clock }) => {
     if (sphereRef.current) {
-      // Add a subtle bobbing motion
       const time = clock.getElapsedTime();
       sphereRef.current.position.y = Math.sin(time * 0.8) * 0.1;
     }
@@ -74,7 +64,6 @@ function WordNode({ position, word, onClick }) {
 
   return (
     <group position={position} onClick={(e) => {
-      // Stop propagation to prevent globe click
       e.stopPropagation();
       onClick(position, word);
     }}>
@@ -84,8 +73,8 @@ function WordNode({ position, word, onClick }) {
         <Sphere args={[0.15, 32, 32]}>
           <MeshDistortMaterial
             color="#ff3333"
-            distort={0.2} // Amount of distortion
-            speed={1.5} // Speed of distortion
+            distort={0.2} 
+            speed={1.5} 
             roughness={0.2}
             metalness={0.8}
             emissive="#ff0000"
@@ -117,8 +106,8 @@ function WordNode({ position, word, onClick }) {
           color="white"
           anchorX="center"
           anchorY="middle"
-          renderOrder={2} // Ensure text renders on top
-          depthTest={false} // Make sure text is always visible
+          renderOrder={2} 
+          depthTest={false} 
           outlineWidth={0.05}
           outlineColor="#000000"
         >
@@ -175,7 +164,7 @@ function SceneContent({ words, positions, links }) {
 
             {/* Globe Wireframe - static, doesn't rotate - clickable for reset */}
             <Sphere args={[globeRadius, 64, 64]} position={[0, 0, 0]} onClick={handleGlobeClick}>
-                <meshBasicMaterial wireframe wireframeLinewidth={0.5} color="#30404d" opacity={0.3} transparent />
+                <meshBasicMaterial wireframe wireframeLinewidth={0.5} color="#30404d" opacity={0.2} transparent />
             </Sphere>
 
             {/* Group for all relationship lines */}
@@ -183,21 +172,20 @@ function SceneContent({ words, positions, links }) {
                 {/* Render Links with similarity-based colors */}
                 {links.map((link, linkIndex) => {
                     const { source, target, similarity } = link;
-                    // Ensure positions exist before trying to render line
                     if (positions[source] && positions[target]) {
                         return (
                             <Line
                                 key={`link-${linkIndex}`}
                                 points={[positions[source], positions[target]]}
                                 color={getSimilarityColor(similarity)}
-                                lineWidth={2.5} // Keep original thickness
+                                lineWidth={2.5} 
                                 opacity={0.8}
                                 transparent
-                                renderOrder={1} // Render above globe wireframe
+                                renderOrder={1} 
                             />
                         );
                     }
-                    return null; // Don't render line if points are missing
+                    return null; 
                 })}
             </group>
             

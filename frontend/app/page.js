@@ -17,10 +17,9 @@ export default function Home() {
   const [wordData, setWordData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [wordsInput, setWordsInput] = useState(""); // Changed to empty string by default
-  const [addedWords, setAddedWords] = useState([]); // Track added words
+  const [wordsInput, setWordsInput] = useState(""); 
+  const [addedWords, setAddedWords] = useState([]); 
 
-  // Set dark mode permanently
   useEffect(() => {
     document.documentElement.classList.add('dark');
   }, []);
@@ -38,7 +37,6 @@ export default function Home() {
           const errorBody = await response.json();
           errorDetail = errorBody.detail || errorDetail;
         } catch (jsonError) {
-          // Ignore if response is not JSON
         }
         throw new Error(errorDetail);
       }
@@ -83,7 +81,6 @@ export default function Home() {
           const errorBody = await response.json();
           errorDetail = errorBody.detail || errorDetail;
         } catch (jsonError) {
-          // Ignore if response is not JSON
         }
         throw new Error(errorDetail);
       }
@@ -92,7 +89,7 @@ export default function Home() {
       console.log("Added words, new data:", data);
       setWordData(data);
       setAddedWords(data.words || []);
-      setWordsInput(''); // Clear input after adding
+      setWordsInput(''); 
 
     } catch (err) {
       console.error("Error adding words:", err);

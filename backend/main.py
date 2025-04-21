@@ -14,6 +14,7 @@ import pickle
 from pydantic import BaseModel
 from typing import List
 from dotenv import load_dotenv
+import random  
 
 # Load environment variables
 load_dotenv()
@@ -30,6 +31,9 @@ WITHIN_CLUSTER_SIMILARITY = 0.8  # Green links
 CROSS_CLUSTER_SIMILARITY_MIN = 0.5  # Orange links
 CROSS_CLUSTER_SIMILARITY_MAX = 0.75
 MIN_SIMILARITY = 0.1  # Avoid near-zero links
+
+# --- Configuration for 3D placement ---
+MIN_DEPTH_FACTOR = 0.4 
 
 # --- Redis Configuration ---
 REDIS_URL = os.getenv('REDIS_URL', 'redis://localhost:6379')
@@ -75,14 +79,12 @@ async def startup_event():
             redis_client = redis.from_url(REDIS_URL, password=REDIS_PASSWORD, db=REDIS_DB)
         else:
             redis_client = redis.from_url(REDIS_URL, db=REDIS_DB)
-        # Test connection
         redis_client.ping()
         logger.info("Redis connection established successfully.")
     except Exception as e:
         logger.error(f"Error connecting to Redis: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to connect to Redis: {e}")
     
-    # Load model
     logger.info(f"Loading model: {MODEL_NAME}...")
     try:
         tokenizer = BertTokenizer.from_pretrained(MODEL_NAME)
@@ -101,13 +103,11 @@ def get_all_words_and_embeddings():
     words = []
     embeddings = []
     
-    # Get all words from the set
     all_words = redis_client.smembers('all_words')
     
     if not all_words:
         return [], []
     
-    # Get each word's embedding
     for word_bytes in all_words:
         word = word_bytes.decode('utf-8')
         embedding_key = f"embedding:{word}"
@@ -131,12 +131,10 @@ def add_words_to_redis(valid_words, word_vectors):
     
     for word, vector in zip(valid_words, word_vectors):
         try:
-            # Store the embedding
             embedding_key = f"embedding:{word}"
             embedding_bytes = pickle.dumps(vector)
             redis_client.set(embedding_key, embedding_bytes)
             
-            # Add word to the set of all words
             redis_client.sadd('all_words', word)
             logger.info(f"Added word '{word}' to Redis")
         except Exception as e:
@@ -150,22 +148,17 @@ def reset_redis_words():
         raise HTTPException(status_code=503, detail="Redis client not initialized")
     
     try:
-        # Get all words
         all_words = redis_client.smembers('all_words')
         
-        # Create a pipeline for batch operations
         pipe = redis_client.pipeline()
         
-        # Delete all embeddings
         for word_bytes in all_words:
             word = word_bytes.decode('utf-8')
             embedding_key = f"embedding:{word}"
             pipe.delete(embedding_key)
         
-        # Delete the set of all words
         pipe.delete('all_words')
         
-        # Execute the pipeline
         pipe.execute()
         
         logger.info("Reset all words and embeddings in Redis")
@@ -201,10 +194,8 @@ def process_words(words: list[str], get_new_embeddings=True):
     if not tokenizer or not model:
         raise HTTPException(status_code=503, detail="Model not loaded yet")
     
-    # Get existing words and embeddings from Redis
     all_words, all_embeddings = get_all_words_and_embeddings()
     
-    # Determine which words are new if needed
     if get_new_embeddings and words:
         new_words = [word for word in words if word not in all_words]
         
@@ -212,10 +203,8 @@ def process_words(words: list[str], get_new_embeddings=True):
             logger.info(f"Processing new words: {new_words}")
             valid_new_words, new_vectors = get_embeddings(new_words)
             
-            # Add new words to Redis
             add_words_to_redis(valid_new_words, new_vectors)
             
-            # Refresh words and embeddings from Redis
             all_words, all_embeddings = get_all_words_and_embeddings()
     
     if not all_words:
@@ -223,7 +212,6 @@ def process_words(words: list[str], get_new_embeddings=True):
     
     word_vectors = np.array(all_embeddings)
 
-    # Handle single word case
     if len(all_words) == 1:
         return {"words": all_words, "positions": [[0, 0, 0]], "links": [], "clusters": [0]}
 
@@ -240,10 +228,24 @@ def process_words(words: list[str], get_new_embeddings=True):
         logger.error(f"t-SNE failed: {e}. Word vectors shape: {word_vectors.shape}")
         return {"words": all_words, "positions": [], "links": [], "clusters": []}
 
-    # 3. Map to Sphere
+    # 3. Map to sphere or inside globe
     norms = np.linalg.norm(word_vectors_3d, axis=1, keepdims=True)
-    norms[norms == 0] = 1e-8
-    word_vectors_sphere = word_vectors_3d / norms * GLOBE_RADIUS
+    norms[norms == 0] = 1e-8 
+    
+    word_vectors_sphere = []
+    for i, vec in enumerate(word_vectors_3d):
+        norm = norms[i][0]
+        
+        normalized_vec = vec / norm
+        
+        depth_factor = random.uniform(MIN_DEPTH_FACTOR, 1.0)
+        
+        scaled_radius = GLOBE_RADIUS * depth_factor
+        
+        position = normalized_vec * scaled_radius
+        word_vectors_sphere.append(position)
+        
+    word_vectors_sphere = np.array(word_vectors_sphere)
 
     # 4. Clustering with AgglomerativeClustering
     if len(all_words) > 1:
@@ -330,7 +332,6 @@ def process_words(words: list[str], get_new_embeddings=True):
 async def get_word_data():
     """Get visualization data for all stored words"""
     try:
-        # Get visualization data for all currently stored words
         data = process_words([], get_new_embeddings=False)
         return data
     except Exception as e:
