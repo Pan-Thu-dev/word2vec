@@ -5,4 +5,4 @@ torch>=1.8.0 # Or install specific version (CPU/GPU) if needed
 scikit-learn>=1.0.0
 numpy>=1.20.0
 python-dotenv>=0.20.0 # Optional: For environment variables 
-hdbscan
+redis>=4.5.0 # For Redis storage

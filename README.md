@@ -11,9 +11,25 @@ This project visualizes word embeddings from a BERT model in a 3D interactive gl
 
 - **Python 3.8+**: Install from [python.org](https://python.org/)
 - **Node.js and npm**: Install from [nodejs.org](https://nodejs.org/)
+- **Redis**: Install from [redis.io](https://redis.io/download)
 - **Git**: (Optional but recommended) for version control
 
 ## Setup
+
+### Redis Setup
+
+1. Install Redis for your platform (see [REDIS_SETUP.md](REDIS_SETUP.md) for detailed instructions)
+2. Start the Redis server:
+   ```bash
+   # On Windows
+   redis-server
+
+   # On macOS
+   brew services start redis
+
+   # On Linux
+   sudo systemctl start redis-server
+   ```
 
 ### Backend
 
@@ -38,7 +54,17 @@ This project visualizes word embeddings from a BERT model in a 3D interactive gl
    pip install -r requirements.txt
    ```
 
-4. Start the backend server:
+4. Configure environment variables (optional):
+   - Create a `.env` file in the backend directory
+   - Add your Redis connection details:
+     ```
+     REDIS_URL=redis://localhost:6379
+     REDIS_PASSWORD=
+     REDIS_DB=0
+     MODEL_NAME=bert-base-uncased
+     ```
+
+5. Start the backend server:
    ```bash
    uvicorn main:app --reload --port 8000
    ```
@@ -65,15 +91,21 @@ This project visualizes word embeddings from a BERT model in a 3D interactive gl
 ## Usage
 
 1. Enter comma-separated words in the input field.
-2. Click the "Visualize Words" button.
+2. Click the "Add Words" button to add them to the visualization.
 3. The words will be displayed on a 3D globe, with related words positioned closer together.
 4. Use your mouse to rotate, zoom, and pan the globe to explore the word relationships.
+5. Click "Reset All" to clear all words and start over.
 
 ## How It Works
 
-1. The frontend sends a list of words to the backend API.
-2. The backend uses a BERT model to generate embeddings for each word.
-3. These high-dimensional embeddings are reduced to 3D using t-SNE.
-4. The 3D coordinates are projected onto a sphere (the globe).
-5. Words with high similarity (based on cosine similarity) are connected by lines.
-6. The frontend renders this data as an interactive 3D visualization. 
+1. The frontend allows you to incrementally add words to the visualization.
+2. Words are stored in Redis for persistence across server restarts.
+3. The backend uses a BERT model to generate embeddings for each word.
+4. These high-dimensional embeddings are reduced to 3D using t-SNE.
+5. The 3D coordinates are projected onto a sphere (the globe).
+6. Words with high similarity (based on cosine similarity) are connected by lines.
+7. The frontend renders this data as an interactive 3D visualization.
+
+## Advanced Configuration
+
+For advanced Redis configuration options and troubleshooting, see [REDIS_SETUP.md](REDIS_SETUP.md). 

@@ -17,23 +17,22 @@ export default function Home() {
   const [wordData, setWordData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [wordsInput, setWordsInput] = useState("dog,cat,puppy,kitten,lion,tiger,wolf,fox,bear,cheetah"); // Default input
+  const [wordsInput, setWordsInput] = useState(""); // Changed to empty string by default
+  const [addedWords, setAddedWords] = useState([]); // Track added words
 
   // Set dark mode permanently
   useEffect(() => {
     document.documentElement.classList.add('dark');
   }, []);
 
-  const fetchData = async (wordsQuery) => {
+  // Fetch initial data on page load
+  const fetchInitialData = async () => {
     setIsLoading(true);
     setError(null);
     try {
-      // Encode the query parameter
-      const encodedQuery = encodeURIComponent(wordsQuery);
-      const response = await fetch(`${API_BASE_URL}/api/word-data?words_query=${encodedQuery}`);
+      const response = await fetch(`${API_BASE_URL}/api/word-data`);
 
       if (!response.ok) {
-        // Try to get error message from backend response body
         let errorDetail = `HTTP error! Status: ${response.status}`;
         try {
           const errorBody = await response.json();
@@ -45,29 +44,99 @@ export default function Home() {
       }
 
       const data = await response.json();
-      console.log("Fetched data:", data); // Log fetched data
+      console.log("Fetched initial data:", data);
       setWordData(data);
+      setAddedWords(data.words || []);
 
     } catch (err) {
       console.error("Fetch error:", err);
       setError(err.message || "Failed to fetch word data.");
-      setWordData(null); // Clear data on error
+      setWordData(null);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Fetch data on initial load with default words
+  // Add new words
+  const addWords = async (newWords) => {
+    if (!newWords || newWords.trim() === '') return;
+    
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const wordsToAdd = newWords.split(',')
+        .map(word => word.trim())
+        .filter(word => word !== '');
+      
+      const response = await fetch(`${API_BASE_URL}/api/add-words`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ words: wordsToAdd }),
+      });
+
+      if (!response.ok) {
+        let errorDetail = `HTTP error! Status: ${response.status}`;
+        try {
+          const errorBody = await response.json();
+          errorDetail = errorBody.detail || errorDetail;
+        } catch (jsonError) {
+          // Ignore if response is not JSON
+        }
+        throw new Error(errorDetail);
+      }
+
+      const data = await response.json();
+      console.log("Added words, new data:", data);
+      setWordData(data);
+      setAddedWords(data.words || []);
+      setWordsInput(''); // Clear input after adding
+
+    } catch (err) {
+      console.error("Error adding words:", err);
+      setError(err.message || "Failed to add words.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Reset all words
+  const resetWords = async () => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/reset`, {
+        method: 'POST',
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+
+      await fetchInitialData(); // Refresh the view
+      
+    } catch (err) {
+      console.error("Error resetting words:", err);
+      setError(err.message || "Failed to reset words.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Fetch data on initial load
   useEffect(() => {
-    fetchData(wordsInput);
-  }, []); // Fetch only on initial mount with default words
+    fetchInitialData();
+  }, []);
 
   const handleInputChange = (event) => {
     setWordsInput(event.target.value);
   };
 
-  const handleFetchClick = () => {
-    fetchData(wordsInput);
+  const handleAddWords = () => {
+    addWords(wordsInput);
   };
 
   return (
@@ -83,25 +152,44 @@ export default function Home() {
         <CardHeader>
           <CardTitle>Word Selection</CardTitle>
           <CardDescription>
-            Enter comma-separated words to visualize their relationships in vector space
+            Enter comma-separated words to add to the visualization
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col space-y-2 sm:flex-row sm:space-y-0 sm:space-x-2">
-            <Input
-              id="wordsInput"
-              value={wordsInput}
-              onChange={handleInputChange}
-              className="sm:min-w-[300px]"
-              placeholder="Enter words separated by commas"
-            />
-            <Button onClick={handleFetchClick} disabled={isLoading}>
-              {isLoading ? 'Processing...' : 'Visualize Words'}
-            </Button>
+          <div className="flex flex-col space-y-4">
+            <div className="flex flex-col space-y-2 sm:flex-row sm:space-y-0 sm:space-x-2">
+              <Input
+                id="wordsInput"
+                value={wordsInput}
+                onChange={handleInputChange}
+                className="sm:min-w-[300px]"
+                placeholder="Enter words separated by commas"
+              />
+              <Button onClick={handleAddWords} disabled={isLoading || !wordsInput.trim()}>
+                {isLoading ? 'Processing...' : 'Add Words'}
+              </Button>
+              <Button onClick={resetWords} disabled={isLoading} variant="outline">
+                Reset All
+              </Button>
+            </div>
+            
+            {error && (
+              <p className="text-sm text-destructive">{error}</p>
+            )}
+            
+            {addedWords.length > 0 && (
+              <div className="mt-2">
+                <h4 className="text-sm font-medium mb-1">Current Words:</h4>
+                <div className="flex flex-wrap gap-1">
+                  {addedWords.map((word, index) => (
+                    <span key={index} className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary">
+                      {word}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
-          {error && (
-            <p className="mt-2 text-sm text-destructive">{error}</p>
-          )}
         </CardContent>
       </Card>
 
@@ -120,7 +208,7 @@ export default function Home() {
               </Suspense>
             ) : !isLoading && !error && !wordData ? (
               <div className="flex items-center justify-center h-full">
-                <p className="text-muted-foreground">No data loaded. Check input or backend connection.</p>
+                <p className="text-muted-foreground">No data loaded. Add some words to begin.</p>
               </div>
             ) : null}
           </div>
